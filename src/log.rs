@@ -23,7 +23,7 @@
 //! [`RaftNode`](crate::node::RaftNode).
 
 use core::iter;
-use crate::proto::gen::raft_protobufs::{
+use crate::raft_protobufs::{
     LogEntry, TermId, LogIndex,
 };
 

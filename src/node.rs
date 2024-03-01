@@ -1,31 +1,45 @@
-// use std::io::Error;
+use std::{io::Error, collections::BTreeSet};
+use crate::raft::RaftState;
+use core::fmt::Display;
+use rand_core::RngCore;
 
-// trait RaftNode {
-//     fn new(id: u64, peers: Vec<u64>) -> Self;
-//     // Define other essential Raft node methods here, such as:
-//     // fn append_entries(&self, entries: Vec<LogEntry>) -> Result<()>;
-//     // fn request_vote(&self, term: u64, candidate_id: u64, last_log_index: u64, last_log_term: u64) -> Result<bool>;
-//     fn send_heartbeat(&self) -> Result<(), Error>;
-// }
+// TODO: Add logs to this later
+pub struct Node<Random, NodeId> {
+    state: RaftState<Random, NodeId>,
+}
 
-// struct Node {
-//     id: u64,
-//     peers: Vec<u64>,
-//     // Other Raft node state fields
-// }
+/// Configurable parameters of a Raft node.
+#[derive(Clone, Eq, PartialEq)]
+pub struct RaftConfig {
+    /// The minimum number of timer ticks between leadership elections.
+    pub election_timeout_ticks: u32,
 
-// impl RaftNode for Node {
-//     fn new(id: u64, peers: Vec<u64>) -> Self {
-//         Node {
-//             id,
-//             peers,
-//             // Initialize other fields
-//         }
-//     }
+    /// The number of timer ticks between sending heartbeats to peers.
+    pub heartbeat_interval_ticks: u32,
 
-//     // Implement other RaftNode methods here
-//     fn send_heartbeat(&self) -> Result<(), Error> {
-//         // Send a heartbeat to all peers
-//         Ok(())
-//     }
-// }
+    /// The maximum number of bytes to replicate to a peer at a time.
+    pub replication_chunk_size: usize,
+}
+
+impl<Random, NodeId> Node<Random, NodeId>
+where Random: RngCore,
+      NodeId: Ord + Clone + Display,
+{
+    pub fn new(
+        id: NodeId,
+        // TODO: Figure out if BTreeSet is a good data structure for async
+        peers: BTreeSet<NodeId>,
+        random: Random,
+        config: RaftConfig,
+    ) -> Self {
+        Self {
+            state: RaftState::new(
+                id,
+                peers,
+                random,
+                config
+            )
+        }
+
+    }
+}

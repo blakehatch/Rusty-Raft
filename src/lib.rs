@@ -108,8 +108,4 @@ pub mod raft;
 pub mod log;
 pub mod node;
 pub mod config;
-pub mod proto {
-    pub mod gen {
-        pub mod raft_protobufs;
-    }
-}
+pub mod raft_protobufs;

@@ -1,19 +1,21 @@
-//! Unstable, low-level API for the complete state of a Raft node.
+//! low-level API for the complete state of a Raft node.
 
 use std::fmt;
 //use std::iter;
 use std::collections::{BTreeMap, BTreeSet};
-// use crate::node::{AppendError, RaftConfig};
+use crate::node::RaftConfig;
 //use crate::log::{CommittedIter, RaftLog, RaftLogState};
 //use log::{error, warn, info, debug};
 use rand_core::RngCore;
 // use self::LeadershipState::*;
-use crate::proto::gen::raft_protobufs::{
+use crate::raft_protobufs::{
     RaftMessage, TermId, LogIndex,
     VoteRequest, VoteResponse, AppendRequest, AppendResponse,
 };
+use self::LeadershipState::*;
 
 /// The state of Raft log replication from a Raft node to one of its peers.
+// TODO: implement this later
 pub struct ReplicationState {
     // \* The next entry to send to each follower.
     // VARIABLE nextIndex
@@ -33,6 +35,8 @@ pub struct ReplicationState {
     pub send_probe: bool,
 
     /// Whether a heartbeat "ping" message is due to be sent to this peer.
+    // TODO: Rethink this in case a bool doesn't make sense for async behavior, look at how async
+    // implementations do it.
     send_heartbeat: bool,
 }
 
@@ -46,7 +50,6 @@ enum LeadershipState<NodeId> {
 
 struct FollowerState<NodeId> {
     leader: Option<NodeId>,
-
     election_ticks:        u32,
     random_election_ticks: u32,
 }
@@ -68,10 +71,11 @@ struct LeaderState<NodeId> {
 
 /// The complete state of a Raft node.
 pub struct RaftState<Random, NodeId> {
+
     node_id: NodeId,
     peers:   BTreeSet<NodeId>,
     random:  Random,
-    //config:  RaftConfig,
+    config:  RaftConfig,
 
     // \* The server's term number.
     // VARIABLE currentTerm
@@ -112,14 +116,44 @@ pub enum RaftMessageDestination<NodeId> {
     To(NodeId),
 }
 
-#[allow(missing_docs)]
+fn election_timeout(rand: &mut impl RngCore, election_timeout_ticks: u32) -> u32 {
+    let random = rand.next_u32().checked_rem(election_timeout_ticks).unwrap_or(0);
+    election_timeout_ticks.saturating_add(random)
+
+}
+
 impl<Random, NodeId> RaftState<Random, NodeId>
 where Random: RngCore,
       NodeId: Ord + Clone + fmt::Display,
 {
+    pub fn new(node_id:    NodeId,
+               mut peers:  BTreeSet<NodeId>,
+               mut random: Random,
+               config:     RaftConfig)
+               -> Self {
+        peers.remove(&node_id);
+        let random_election_ticks = election_timeout(&mut random, config.election_timeout_ticks);
 
-    // pub fn set_config(&mut self, config: RaftConfig) {
-    // }
+        Self {
+            node_id,
+            peers,
+            random,
+            config,
+            current_term: Default::default(),
+            voted_for:    Default::default(),
+            // All nodes start as Followers until a Leader is elected
+            leadership:   Follower(FollowerState {
+                leader:         None,
+                election_ticks: random_election_ticks,
+                random_election_ticks,
+            }),
+            // TODO: Add Log
+        }
+    }
+
+
+    pub fn set_config(&mut self, config: RaftConfig) {
+    }
 
     // pub fn take_committed(&mut self) -> CommittedIter<'_, Log> {
     // }
@@ -206,6 +240,7 @@ where Random: RngCore,
     // \* Candidate i transitions to leader.
     fn become_leader(&mut self) {                                               
         unimplemented!("become_leader")
+        
     }
 
     // ClientRequest(i, v) ==

@@ -5,7 +5,7 @@ fn main() {
     let proto_file = "./src/proto/raft.proto";
 
     let src = Path::new("src/proto/gen/raft.protobufs.rs");
-    let dst = Path::new("src/proto/gen/raft_protobufs.rs");
+    let dst = Path::new("src/raft_protobufs.rs");
 
     tonic_build::configure()
         .build_server(true)
